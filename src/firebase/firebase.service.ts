@@ -7,8 +7,8 @@ import { randomUUID } from 'crypto';
 @Injectable()
 export class FirebaseService implements OnModuleInit {
   private readonly logger = new Logger(FirebaseService.name);
-  private app: admin.app.App;
-  private bucket: ReturnType<admin.storage.Storage['bucket']>;
+  private app!: admin.app.App;
+  private bucket!: ReturnType<admin.storage.Storage['bucket']>;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -17,19 +17,11 @@ export class FirebaseService implements OnModuleInit {
       this.app = admin.apps[0] as admin.app.App;
       this.logger.log('Firebase conectado (app já inicializado)');
     } else {
-      const credentialsPath =
-        this.configService.get<string>('GOOGLE_APPLICATION_CREDENTIALS') ??
-        'firebase.json';
-
-      const serviceAccountPath = path.isAbsolute(credentialsPath)
-        ? credentialsPath
-        : path.join(process.cwd(), credentialsPath);
-
-      const serviceAccount = require(serviceAccountPath);
+      const serviceAccount = this.loadCredentials();
 
       const storageBucket =
         this.configService.get<string>('FIREBASE_STORAGE_BUCKET') ??
-        `${serviceAccount.project_id}.firebasestorage.app`;
+        `${serviceAccount.project_id ?? serviceAccount.projectId}.firebasestorage.app`;
 
       this.app = admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
@@ -39,6 +31,26 @@ export class FirebaseService implements OnModuleInit {
     }
 
     this.bucket = admin.storage().bucket();
+  }
+
+  private loadCredentials(): Record<string, string> {
+    // 1) Variável FIREBASE_CREDENTIALS com JSON inline (Render, Railway, etc.)
+    const credentialsJson =
+      this.configService.get<string>('FIREBASE_CREDENTIALS');
+    if (credentialsJson) {
+      return JSON.parse(credentialsJson);
+    }
+
+    // 2) Arquivo local via GOOGLE_APPLICATION_CREDENTIALS ou firebase.json
+    const credentialsPath =
+      this.configService.get<string>('GOOGLE_APPLICATION_CREDENTIALS') ??
+      'firebase.json';
+
+    const serviceAccountPath = path.isAbsolute(credentialsPath)
+      ? credentialsPath
+      : path.join(process.cwd(), credentialsPath);
+
+    return require(serviceAccountPath);
   }
 
   auth(): admin.auth.Auth {
