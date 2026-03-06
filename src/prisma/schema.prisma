@@ -1,0 +1,223 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+// =======================
+// USERS
+// =======================
+enum UserRole {
+  CORRETOR   // Corretor de imóveis
+  COMPRADOR  // Comprador
+}
+
+model User {
+  id             String    @id @default(uuid()) @db.Char(36)
+  name           String?   @db.VarChar(255)
+  email          String    @unique @db.VarChar(255)
+  password       String    @db.Text
+  role           UserRole?
+  creci          String?   @db.VarChar(50)  // Registro no Conselho Regional (apenas CORRETOR)
+  phone          String?   @db.VarChar(20)
+  whatsapp       String?   @db.VarChar(20)
+  is_active      Boolean   @default(true)
+  is_email_verified Boolean @default(false)
+  renda_mensal   Decimal?  @db.Decimal(14, 2)
+  valor_entrada  Decimal?  @db.Decimal(14, 2)
+  created_at     DateTime  @default(now())
+  last_login     DateTime?
+  avatar_url     String?   @db.Text
+
+  properties Property[]
+  favorites   Favorite[]
+  passwordResets PasswordReset[]
+  emailVerifications EmailVerification[]
+  address     UserAddress?
+  propertyComments  PropertyComment[]
+  corretorComments  CorretorComment[] @relation("authorComments")
+  receivedComments  CorretorComment[] @relation("receivedComments")
+
+  @@map("users")
+}
+
+model EmailVerification {
+  id         String   @id @default(uuid()) @db.Char(36)
+  user_id    String   @db.Char(36)
+  token      String   @unique @db.VarChar(64)
+  expires_at DateTime @db.Timestamptz(6)
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("email_verifications")
+}
+
+model PasswordReset {
+  id         String   @id @default(uuid()) @db.Char(36)
+  user_id    String   @db.Char(36)
+  code       String   @db.VarChar(6)
+  expires_at DateTime @db.Timestamptz(6)
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("password_resets")
+}
+
+// =======================
+// PROPERTIES
+// =======================
+enum PropertyStatus {
+  RASCUNHO   // Rascunho
+  DISPONIVEL // Disponível (publicado)
+  VENDIDO    // Vendido
+}
+
+enum PropertyType {
+  CASA
+  APARTAMENTO
+  COMERCIAL
+  RURAL
+  TERRENO
+}
+
+model Property {
+  id           String   @id @default(uuid()) @db.Char(36)
+  owner_id     String   @db.Char(36)
+  title        String   @db.VarChar(255)
+  description  String?  @db.Text
+  property_type PropertyType?
+  price        Decimal  @default(0) @db.Decimal(14, 2)
+  area         Decimal  @default(0) @db.Decimal(10, 2)
+  bedrooms     Int      @default(0)
+  status       PropertyStatus @default(RASCUNHO)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  owner    User       @relation(fields: [owner_id], references: [id], onDelete: Cascade)
+  address  Address?   // Obrigatório na aplicação: sempre criado no create
+  images   PropertyImage[]
+  favorites Favorite[]
+  comments  PropertyComment[]
+
+  @@map("properties")
+}
+
+// =======================
+// ADDRESSES
+// =======================
+model UserAddress {
+  id           String   @id @default(uuid()) @db.Char(36)
+  user_id      String   @unique @db.Char(36)
+  street       String?  @db.VarChar(255)
+  number       String?  @db.VarChar(50)
+  neighborhood String?  @db.VarChar(255)
+  city         String?  @db.VarChar(255)
+  state        String?  @db.VarChar(255)
+  country      String?  @db.VarChar(255)
+  postal_code  String?  @db.VarChar(20)
+  lat          Float?
+  lng          Float?
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_addresses")
+}
+
+model Address {
+  id          String   @id @default(uuid()) @db.Char(36)
+  property_id String   @unique @db.Char(36)
+  street      String?  @db.VarChar(255)
+  number      String?  @db.VarChar(50)
+  neighborhood String? @db.VarChar(255)
+  city        String?  @db.VarChar(255)
+  state       String?  @db.VarChar(255)
+  country     String?  @db.VarChar(255)
+  postal_code String?  @db.VarChar(20)
+  lat         Float?
+  lng         Float?
+
+  property Property @relation(fields: [property_id], references: [id], onDelete: Cascade)
+
+  @@map("addresses")
+}
+
+// =======================
+// PROPERTY_IMAGES
+// =======================
+model PropertyImage {
+  id          String   @id @default(uuid()) @db.Char(36)
+  property_id String   @db.Char(36)
+  filename    String?  @db.VarChar(255)
+  content_type String? @db.VarChar(100)
+  image_url   String   @db.Text
+  storage_path String?  @db.Text
+  size_bytes  Int?
+  width       Int?
+  height      Int?
+  sort_order  Int      @default(0)
+  created_at  DateTime @default(now())
+
+  property Property @relation(fields: [property_id], references: [id], onDelete: Cascade)
+
+  @@map("property_images")
+}
+
+// =======================
+// FAVORITES
+// =======================
+model Favorite {
+  id         String   @id @default(uuid()) @db.Char(36)
+  user_id    String   @db.Char(36)
+  listing_id String   @db.Char(36) // Referencia properties.id
+  created_at DateTime @default(now())
+
+  user   User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [listing_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, listing_id])
+  @@map("favorites")
+}
+
+// =======================
+// COMMENTS
+// =======================
+model PropertyComment {
+  id          String   @id @default(uuid()) @db.Char(36)
+  author_id   String   @db.Char(36)
+  property_id String   @db.Char(36)
+  content     String   @db.Text
+  rating      Int?     // 1-5
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  author   User     @relation(fields: [author_id], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [property_id], references: [id], onDelete: Cascade)
+
+  @@map("property_comments")
+}
+
+model CorretorComment {
+  id          String   @id @default(uuid()) @db.Char(36)
+  author_id   String   @db.Char(36)
+  corretor_id String   @db.Char(36)
+  content     String   @db.Text
+  rating      Int?     // 1-5
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  author   User @relation("authorComments", fields: [author_id], references: [id], onDelete: Cascade)
+  corretor User @relation("receivedComments", fields: [corretor_id], references: [id], onDelete: Cascade)
+
+  @@map("corretor_comments")
+}
