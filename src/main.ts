@@ -34,6 +34,7 @@ async function bootstrap() {
         '- **Auth**: Login, cadastro, recuperação de senha (código 6 dígitos, 5 min), verificação de e-mail (link 5 min), perfil. JWT expira em 15 minutos (configurável via JWT_EXPIRATION).\n' +
         '- **Property**: CRUD de imóveis. Status: RASCUNHO, DISPONIVEL, VENDIDO. Exige e-mail verificado e CRECI para criar. Imagem principal = primeira por sort_order.\n' +
         '- **Listings**: Listagem pública com filtros. Recomendações: preço máx = min(entrada/0.2, entrada+renda×120); ordenação por estado/cidade.\n' +
+        '- **Comments**: Comentários e avaliações (1-5) em imóveis e corretores. Listagem pública; criar/editar/remover exigem autenticação (apenas o autor pode editar/remover).\n' +
         '- **Health**: Firebase, Mail, Supabase. Retorna 200 ou 503.',
     )
     .setVersion('1.0')

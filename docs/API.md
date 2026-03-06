@@ -35,6 +35,7 @@ Rotas marcadas como **Públicas** (`@Public()`) não exigem autenticação.
 | **Listings** | GET /, GET /:id, GET /owner/:ownerId | GET /recommendations                       |
 | **Common**   | GET /brazilian-states               | —                                         |
 | **Favorite** | —                                  | GET /favorite, POST /favorite/:listingId, DELETE /favorite/:listingId |
+| **Comments** | GET /comments/property/:id, GET /comments/corretor/:id | POST, PATCH, DELETE (autenticado, autor) |
 | **Corretores** | GET /corretores                    | —                                         |
 | **Health**   | GET /                                | —                                         |
 
@@ -218,6 +219,56 @@ Retorna detalhes do imóvel. Aceita status `DISPONIVEL` ou `VENDIDO`. **Não exi
 
 ---
 
+### Comments (`/comments`)
+
+#### Comentários em imóveis
+
+| Método | Rota | Acesso | Descrição |
+|--------|------|--------|-----------|
+| GET | `/comments/property/:propertyId` | Público | Lista comentários de um imóvel. Query: `page`, `limit`. Resposta paginada com `data` e `meta`. Cada comentário inclui `author: { id, name, avatar_url }`. |
+| POST | `/comments/property/:propertyId` | Autenticado | Cria comentário em um imóvel. Body: `{ content: string, rating?: 1-5 }`. |
+| PATCH | `/comments/property/:id` | Autor | Edita comentário. Body: `{ content?: string, rating?: 1-5 }`. Retorna 403 se não for o autor. |
+| DELETE | `/comments/property/:id` | Autor | Remove comentário. Retorna `{ message: "Comentário removido" }`. Retorna 403 se não for o autor. |
+
+#### Comentários em corretores
+
+| Método | Rota | Acesso | Descrição |
+|--------|------|--------|-----------|
+| GET | `/comments/corretor/:corretorId` | Público | Lista comentários/avaliações de um corretor. Query: `page`, `limit`. Retorna 404 se o usuário não for CORRETOR. |
+| POST | `/comments/corretor/:corretorId` | Autenticado | Cria comentário sobre um corretor. Body: `{ content: string, rating?: 1-5 }`. |
+| PATCH | `/comments/corretor/:id` | Autor | Edita comentário. Body: `{ content?: string, rating?: 1-5 }`. |
+| DELETE | `/comments/corretor/:id` | Autor | Remove comentário. |
+
+**Regras**
+
+- **Listagem**: pública, sem autenticação. Ordenação por `created_at` descendente.
+- **Criar**: qualquer usuário autenticado (CORRETOR ou COMPRADOR).
+- **Editar/Remover**: apenas o autor do comentário (retorna 403 para outros).
+- **Rating**: opcional, inteiro de 1 a 5.
+- **Author**: sempre incluso na resposta: `{ id, name, avatar_url }`.
+
+**Exemplo de resposta (listagem)**:
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "author_id": "uuid",
+      "property_id": "uuid",
+      "content": "Ótima localização!",
+      "rating": 5,
+      "created_at": "2026-03-06T14:00:00.000Z",
+      "updated_at": "2026-03-06T14:00:00.000Z",
+      "author": { "id": "uuid", "name": "João Silva", "avatar_url": null }
+    }
+  ],
+  "meta": { "total": 1, "page": 1, "limit": 10, "totalPages": 1 }
+}
+```
+
+---
+
 ### Health (`/health`)
 
 | Método | Rota | Acesso | Descrição |
@@ -252,5 +303,7 @@ Todas as respostas de erro seguem o padrão descrito em [API_ERROR_FORMAT.md](./
 | Property | CreatePropertyDto, UpdatePropertyDto | CRUD de imóveis |
 | Property | AddressDto | Endereço (create/update) |
 | Property | ReorderImagesDto | Reordenação de imagens |
+| Comments | CreateCommentDto | Criar comentário (content + rating?) |
+| Comments | UpdateCommentDto | Editar comentário (content? + rating?) |
 | Users | CreateUserDto | Cadastro (via AuthService) |
 | Health | HealthOkResponseDto, HealthErrorResponseDto | Swagger (respostas) |
