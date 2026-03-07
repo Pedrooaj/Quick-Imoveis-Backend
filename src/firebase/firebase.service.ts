@@ -79,10 +79,10 @@ export class FirebaseService implements OnModuleInit {
   ): Promise<string> {
     const file = this.bucket.file(filePath);
     await file.save(buffer, {
-      metadata: { contentType },
+      metadata: { contentType, cacheControl: 'no-cache, max-age=0' },
       public: true,
     });
-    return file.publicUrl();
+    return `${file.publicUrl()}?t=${Date.now()}`;
   }
 
   /**
